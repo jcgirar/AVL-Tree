@@ -2,7 +2,6 @@
 #include <stdio.h>
 
 #include "avl.h"
-#include "avl_alt.h"
 
 const int balances[5][5][2] = {
 	{{1,0},{0,0},{0,0},{0,0},{0,0}},
@@ -11,7 +10,7 @@ const int balances[5][5][2] = {
 	{{0,-2},{0,-2},{0,-1},{-1,-1},{0,0}},
 	{{0,0},{0,0},{0,0},{0,0},{-1,0}}
 };
-
+/*
 void print_balances() {
 	printf("\nint balances[5][5][2] = {\n");
 	int a;
@@ -29,8 +28,11 @@ void print_balances() {
 	}
 	printf("};\n");
 }
+*/
 
-int get_height(avl_node_t *node) {
+/* this two recursive functions are used to test if the balances are correct
+ * but are not used by the other functions */
+int avl_recursive_get_height(avl_node_t *node) {
 	unsigned int height = 0;
 	if (node) {
 		unsigned int rightheight = get_height(node->right);
@@ -40,10 +42,33 @@ int get_height(avl_node_t *node) {
 	return height+1;
 }
 
-int get_balance(avl_node_t *node) {
+int avl_recursive_get_balance(avl_node_t *node) {
 	if (node) return get_height(node->right)-get_height(node->left);
 	return 0;
 }
+
+/* function used when no compare callback are used , it asumes the key is an int
+ * and its placed just after the avl_node_t . Its an expeiment to test if without
+ * callbacks the insert-delete proccess is faster */
+static avl_node_t **_int_getstack(avl_index_t *index, avl_stack_t *stack, avl_node_t *node) {
+	stack->top = 0;				
+	/* search the tree stacking the intermediate nodes */
+	avl_node_t **inode = &index->root;
+	while (*inode) {
+		STACK_PUSH(stack, inode);
+		int dif = AVL_INTKEY(*inode) - AVL_INTKEY(node);
+		if (dif>0)
+			inode = &(*inode)->left;
+		else if (dif<0)
+			inode = &(*inode)->right;
+		else 
+			/* found */
+			return NULL;
+	}
+	/* not found so return the node where can insert new node*/
+	return inode;
+}
+
 
 avl_node_t **avl_getstack(avl_index_t *index, avl_stack_t *stack, avl_node_t *node) {
 	stack->top = 0;				
@@ -69,7 +94,7 @@ int	avl_init(avl_index_t *index, int (*compare)(avl_node_t *, avl_node_t *)) {
 		index->compare = compare;
 		index->root = NULL;
 		if (compare) index->getstack = avl_getstack;
-		else index->getstack = avl_int_getstack;
+		else index->getstack = _int_getstack;
 		return 0;
 	}
 	return 1;
@@ -227,6 +252,7 @@ static inline void trasverse_right(avl_stack_t *stack, avl_node_t **inode) {
 	}
 }
 
+/* this function is not working yet */
 int avl_remove(avl_index_t *index, avl_node_t *node) {
 	avl_stack_t stack;
 	avl_node_t **inode = index->getstack(index, &stack, node);
