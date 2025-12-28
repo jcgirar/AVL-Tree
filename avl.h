@@ -1,0 +1,56 @@
+#ifndef AVL_H_INCLUDED
+#define AVL_H_INCLUDED
+
+#include <stddef.h>
+#include <stdint.h>
+
+/* utility macro because avl_node_t must always be included in other structures
+ * and this macro is used to get that container structure  */
+#define container_of(ptr, type, member) (type *)((char *)(ptr) - offsetof(type, member))
+
+typedef struct avl_node avl_node_t;
+struct avl_node {
+    avl_node_t *left;
+    avl_node_t *right;
+    int balance;
+};
+
+#define AVL_STACK_SIZE 32
+#define STACK_PUSH(stack,value) (stack)->nodeptr[(stack)->top++] = (value)
+#define STACK_POP(stack) (stack)->nodeptr[--(stack)->top]
+
+typedef struct avl_stack avl_stack_t;
+struct avl_stack {
+	avl_node_t **nodeptr[AVL_STACK_SIZE];
+	unsigned int top;
+};
+
+
+typedef struct avl_index avl_index_t;
+struct avl_index {
+	int (*compare)(avl_node_t *, avl_node_t *);
+	avl_node_t **(*getstack)(avl_index_t *, avl_stack_t *, avl_node_t *);
+	avl_node_t *root;
+};
+
+#define AVL_ITERATOR_LEFT 0
+#define AVL_ITERATOR_RIGHT 1
+
+typedef struct {
+	int direction;
+	avl_index_t *index;
+	avl_stack_t stack;
+} avl_iterator_t;
+
+int				avl_init(avl_index_t *, int (*)(avl_node_t *, avl_node_t *));
+avl_node_t *	avl_search(avl_index_t *, avl_node_t *);
+int 			avl_insert(avl_index_t *, avl_node_t *);
+int 			avl_remove(avl_index_t *, avl_node_t *);
+void 			avl_iterator_init(avl_iterator_t *, avl_index_t *, int);
+int 			avl_iterator_have_data(avl_iterator_t *);
+void 			avl_iterator_move_first(avl_iterator_t *); 
+void 			avl_iterator_move_last(avl_iterator_t *);
+void 			avl_iterator_move(avl_iterator_t *, avl_node_t *); 
+avl_node_t *	avl_iterator_get(avl_iterator_t *);
+
+#endif // AVL_H_INCLUDED 
