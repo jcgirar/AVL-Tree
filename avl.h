@@ -7,8 +7,8 @@
 /* utility macro because avl_node_t must always be included in other structures
  * and this macro is used to get that container structure  */
 #define avl_container_of(ptr, type, member) (type *)((char *)(ptr) - offsetof(type, member))
-/* utility macro used to get the int key just after the avl_node_t */
-#define AVL_INTKEY(ptr) *((int *)((char *)(ptr)+sizeof(avl_node_t)))
+/* utility macro used to get the uint key just after the avl_node_t */
+#define AVL_UINTKEY(ptr) *((unsigned int *)((char *)(ptr)+sizeof(avl_node_t)))
 
 
 typedef struct avl_node avl_node_t;

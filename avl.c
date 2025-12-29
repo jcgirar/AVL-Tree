@@ -35,15 +35,16 @@ void print_balances() {
 int avl_recursive_get_height(avl_node_t *node) {
 	unsigned int height = 0;
 	if (node) {
-		unsigned int rightheight = get_height(node->right);
-		unsigned int leftheight = get_height(node->left);
+		unsigned int rightheight = avl_recursive_get_height(node->right);
+		unsigned int leftheight = avl_recursive_get_height(node->left);
 		height = (rightheight > leftheight ? rightheight : leftheight);
 	} 
 	return height+1;
 }
 
 int avl_recursive_get_balance(avl_node_t *node) {
-	if (node) return get_height(node->right)-get_height(node->left);
+	if (node) 
+		return avl_recursive_get_height(node->right) - avl_recursive_get_height(node->left);
 	return 0;
 }
 
@@ -56,7 +57,7 @@ static avl_node_t **_int_getstack(avl_index_t *index, avl_stack_t *stack, avl_no
 	avl_node_t **inode = &index->root;
 	while (*inode) {
 		STACK_PUSH(stack, inode);
-		int dif = AVL_INTKEY(*inode) - AVL_INTKEY(node);
+		int dif = AVL_UINTKEY(*inode) - AVL_UINTKEY(node);
 		if (dif>0)
 			inode = &(*inode)->left;
 		else if (dif<0)
