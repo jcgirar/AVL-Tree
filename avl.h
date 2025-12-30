@@ -1,5 +1,5 @@
 #ifndef AVL_H_INCLUDED
-#define AVL_H_INCLUDED
+#define AVL_H_INCLUDED 1
 
 #include <stddef.h>
 #include <stdint.h>
@@ -29,10 +29,10 @@ struct avl_stack {
 };
 
 
-typedef struct avl_index avl_index_t;
-struct avl_index {
+typedef struct avl_tree avl_tree_t;
+struct avl_tree {
 	int (*compare)(avl_node_t *, avl_node_t *);
-	avl_node_t **(*getstack)(avl_index_t *, avl_stack_t *, avl_node_t *);
+	avl_node_t **(*getstack)(avl_tree_t *, avl_stack_t *, avl_node_t *);
 	avl_node_t *root;
 };
 
@@ -41,15 +41,16 @@ struct avl_index {
 
 typedef struct {
 	int direction;
-	avl_index_t *index;
+	avl_tree_t *index;
 	avl_stack_t stack;
 } avl_iterator_t;
 
-int				avl_init(avl_index_t *, int (*)(avl_node_t *, avl_node_t *));
-avl_node_t *	avl_search(avl_index_t *, avl_node_t *);
-int 			avl_insert(avl_index_t *, avl_node_t *);
-int 			avl_remove(avl_index_t *, avl_node_t *);
-void 			avl_iterator_init(avl_iterator_t *, avl_index_t *, int);
+int 			avl_node_get_height(avl_node_t *);
+int				avl_tree_init(avl_tree_t *, int (*)(avl_node_t *, avl_node_t *));
+avl_node_t *	avl_tree_search(avl_tree_t *, avl_node_t *);
+int 			avl_tree_insert(avl_tree_t *, avl_node_t *);
+int 			avl_tree_remove(avl_tree_t *, avl_node_t *);
+void 			avl_iterator_init(avl_iterator_t *, avl_tree_t *, int);
 int 			avl_iterator_have_data(avl_iterator_t *);
 void 			avl_iterator_move_first(avl_iterator_t *); 
 void 			avl_iterator_move_last(avl_iterator_t *);

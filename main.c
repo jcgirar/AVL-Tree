@@ -34,26 +34,26 @@ struct person sampledata[20] = {
 	{.id=17, .name="Francois", .surname="Leclerc", .age=31},
 	{.id=18, .name="Carlos", .surname="Garcia", .age=60},
 	{.id=19, .name="Donald", .surname="Ford", .age=76},
-	{.id=20, .name="John", .surname="Alsesio", .age=28}
+	{.id=20, .name="John", .surname="Alesio", .age=28}
 };
 
-avl_index_t id_tree;
-avl_index_t fullname_tree;
-avl_index_t age_tree;
+avl_tree_t id_tree;
+avl_tree_t fullname_tree;
+avl_tree_t age_tree;
 
 int add_record(struct person *p) {
-	int ret = avl_insert(&id_tree, &(p->id_node));
+	int ret = avl_tree_insert(&id_tree, &(p->id_node));
 	if (ret) 
 		printf("ID not unique\n");
 	else {
-		ret = avl_insert(&fullname_tree, &(p->fullname_node));
+		ret = avl_tree_insert(&fullname_tree, &(p->fullname_node));
 		if (ret) {
 			printf("FULLNAME (name+surname) not unique\n");
 			/* remove id_tree node because is alrready inserted */
-			avl_remove(&id_tree, &(p->id_node));
+			avl_tree_remove(&id_tree, &(p->id_node));
 		} else {
 			/* age_tree uses id_tree to compare equal ages so is not necesary check if its unique */
-			avl_insert(&age_tree, &(p->age_node));
+			avl_tree_insert(&age_tree, &(p->age_node));
 		}
 	}
 	return ret;
@@ -100,6 +100,9 @@ void iterate_age() {
 int fullname_compare(avl_node_t *a, avl_node_t *b) {
 	struct person *person_a = avl_container_of(a, struct person, fullname_node);
 	struct person *person_b = avl_container_of(b, struct person, fullname_node);
+	/* first compare surname and if both have the same then compare name.
+	 * The important thing is that combination of both are unique. This makes
+	 * that if you iterate the names are ordered by surname and if equals then by name */
 	int dif = strncmp(person_a->surname, person_b->surname, 32);
 	if (dif == 0) dif = strncmp(person_a->name, person_b->name, 16);
 	return dif;
@@ -108,20 +111,24 @@ int fullname_compare(avl_node_t *a, avl_node_t *b) {
 int age_compare(avl_node_t *a, avl_node_t *b) {
 	struct person *person_a = avl_container_of(a, struct person, age_node);
 	struct person *person_b = avl_container_of(b, struct person, age_node);
+	/* if ages are in the 'normal' range just substraction its enougth but
+	 * if ages are > INT_MAX then a double comparation its necesary because 
+	 * int overflow */
 	int dif = person_a->age - person_b->age;
-	if (dif == 0) dif = person_a->id - person_b->id;
+	/* if ages are the same the use unique ID to diferenciate */
+	if (dif == 0) dif = ((person_a->id < person_b->id) ? -1 : (person_a->id > person_b->id));
 	return dif;
 }
 int main() {
-	avl_init(&id_tree, NULL);
-	avl_init(&fullname_tree, fullname_compare);
-	avl_init(&age_tree, age_compare);
+	avl_tree_init(&id_tree, NULL);
+	avl_tree_init(&fullname_tree, fullname_compare);
+	avl_tree_init(&age_tree, age_compare);
 	fill_trees();
-	printf("Records by ID\n");
+	printf("Records ordered by ID\n");
 	iterate_id();
-	printf("Records by Fullname\n");
+	printf("Records ordered by Fullname\n");
 	iterate_fullname();
-	printf("Records by age\n");
+	printf("Records ordered by age\n");
 	iterate_age();
 	return 0;
 }
