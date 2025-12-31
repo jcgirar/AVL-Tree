@@ -42,21 +42,25 @@ avl_tree_t fullname_tree;
 avl_tree_t age_tree;
 
 int add_record(struct person *p) {
-	int ret = avl_tree_insert(&id_tree, &(p->id_node));
+	avl_stack_t id_stack;
+	avl_stack_t fullname_stack;
+	void *ret = avl_tree_search(&id_tree, &(p->id_node), &id_stack);
 	if (ret) 
 		printf("ID not unique\n");
 	else {
-		ret = avl_tree_insert(&fullname_tree, &(p->fullname_node));
-		if (ret) {
+		ret = avl_tree_search(&fullname_tree, &(p->fullname_node), &fullname_stack);
+		if (ret)
 			printf("FULLNAME (name+surname) not unique\n");
-			/* remove id_tree node because is alrready inserted */
-			avl_tree_remove(&id_tree, &(p->id_node));
-		} else {
+		else {
+			/* after checking if ID and FULLNAME are uniques do insert */
+			avl_tree_insert(&id_tree, &(p->id_node), &id_stack);
+			avl_tree_insert(&fullname_tree, &(p->fullname_node), &fullname_stack);
 			/* age_tree uses id_tree to compare equal ages so is not necesary check if its unique */
-			avl_tree_insert(&age_tree, &(p->age_node));
+			avl_tree_insert(&age_tree, &(p->age_node), NULL);
 		}
 	}
-	return ret;
+	/* if ID or FULLNAME are repeated return ERROR(1) else NOERROR(0) */
+	return (ret ? 1 : 0);
 }
 
 void fill_trees() {
