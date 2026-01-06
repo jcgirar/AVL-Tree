@@ -4,14 +4,14 @@
 #include "avl.h"
 
 const int balances[5][5][2] = {
-	{{1,0},{0,0},{0,0},{0,0},{0,0}},
+	{{1,0},{0,0},{-1,1},{0,0},{0,0}},
 	{{1,1},{1,1},{0,1},{0,2},{0,0}},
 	{{0,0},{0,0},{0,0},{0,0},{0,0}},
 	{{0,-2},{0,-2},{0,-1},{-1,-1},{0,0}},
-	{{0,0},{0,0},{0,0},{0,0},{-1,0}}
+	{{0,0},{0,0},{1,-1},{0,0},{-1,0}}
 };
-/*
-void print_balances() {
+
+/* void print_balances() {
 	printf("\nint balances[5][5][2] = {\n");
 	int a;
 	for (a=0; a<5; a++) {
@@ -27,8 +27,8 @@ void print_balances() {
 			printf("},\n");
 	}
 	printf("};\n");
-}
-*/
+}*/
+
 
 /* this two recursive functions are used to test if the balances are correct
  * but are not used by the other functions */
@@ -48,65 +48,10 @@ int avl_node_get_balance(avl_node_t *node) {
 	return 0;
 }
 
-/* function used when no compare callback are used , it asumes the key is an int
- * and its placed just after the avl_node_t . Its an expeiment to test if without
- * callbacks the insert-delete proccess is faster */
-static avl_node_t *_int_search(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
-	avl_stack_t ts;
-	if (!stack) stack = &ts;
-	stack->top = 0;				
-	avl_node_t **inode = &index->root;
-	/* insert &root */
-	STACK_PUSH(stack, inode);
-	/* search the tree stacking the intermediate nodes */
-	while (*inode) {
-		unsigned int a = AVL_UINTKEY(*inode);
-		unsigned int b = AVL_UINTKEY(node);
-		if (a > b)
-			inode = &(*inode)->left;
-		else if (a < b)
-			inode = &(*inode)->right;
-		else {
-			/* return and stack node found */
-			STACK_PUSH(stack, inode);
-			return *inode;
-		}
-		STACK_PUSH(stack, inode);
-	}
-	return NULL;
-}
-
-static avl_node_t *_avl_tree_search(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
-	avl_stack_t ts;
-	if (!stack) stack = &ts;
-	stack->top = 0;				
-	avl_node_t **inode = &index->root;
-	/* insert &root */
-	STACK_PUSH(stack, inode);
-	/* search the tree stacking the intermediate nodes */
-	while (*inode) {
-		int dif = index->compare(*inode, node);
-		if (dif>0)
-			inode = &(*inode)->left;
-		else if (dif<0)
-			inode = &(*inode)->right;
-		else {
-			/* return and stack node found */
-			STACK_PUSH(stack, inode);
-			return *inode;
-		}
-		STACK_PUSH(stack, inode);
-	}
-	return NULL;
-}
-
-
 int	avl_tree_init(avl_tree_t *index, int (*compare)(avl_node_t *, avl_node_t *)) {
-	if (index) {
+	if (index && compare) {
 		index->compare = compare;
 		index->root = NULL;
-		if (compare) index->search = _avl_tree_search;
-		else index->search = _int_search;
 		return 0;
 	}
 	return 1;
@@ -192,8 +137,25 @@ static inline avl_node_t *balance_node(avl_node_t *node) {
 }
 
 avl_node_t *avl_tree_search(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
-	if (index && index->search)
-		return index->search(index,node,stack);
+	if (index && node) {
+		avl_node_t **inode = &index->root;
+		int dif;
+		if (stack) 
+			stack->top =0;
+		/* search the tree stacking the intermediate nodes */
+		do {
+			if (stack) STACK_PUSH(stack, inode);
+			if (*inode) {
+				dif = index->compare(*inode, node);
+				if (dif>0) 
+					inode = &(*inode)->left;
+				else if (dif<0) 
+					inode = &(*inode)->right;
+				else   
+					return *inode;
+			} else break;
+		} while (1);
+	}
 	return NULL;
 }
 
@@ -203,7 +165,7 @@ int avl_tree_insert(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 	if (!stack) {
 		stack = &ts;
 		/* if node found return because no insert is possible */
-		if (index->search(index,node,stack)) return 1;
+		if (avl_tree_search(index,node,stack)) return 1;
 	}
 	avl_node_t **inode = STACK_POP(stack);
 	/* not possible to insert on an arready ocupied inode  */
@@ -238,86 +200,110 @@ static inline void traverse_left(avl_stack_t *stack, avl_node_t **inode) {
 	} 
 }
 
-static inline void trasverse_right(avl_stack_t *stack, avl_node_t **inode) {
+static inline void traverse_right(avl_stack_t *stack, avl_node_t **inode) {
 	while (*inode) {
 		STACK_PUSH(stack, inode);
 		inode = &(*inode)->right;
 	}
 }
 
-/* this function is not working yet */
-int avl_tree_remove(avl_tree_t *index, avl_node_t *node) {
-	avl_stack_t stack;
-	if (index->search(index, node, &stack)) {
-		avl_node_t **inode = STACK_POP(&stack);
-		if ((*inode)->right) {
-			unsigned int tmpindex =++stack.top; 
-			traverse_left(&stack, &(*inode)->right);
-			avl_node_t **substitute = STACK_POP(&stack);
-			stack.nodeptr[tmpindex] = substitute;
-			(*substitute)->left =(*inode)->left;
-			(*substitute)->balance =(*inode)->balance;
-			if (*substitute == (*inode)->right)
-				*inode = *substitute;
-			else {
-				avl_node_t *tmp = (*substitute)->right;
-				(*substitute)->right = (*inode)->right;
-				*inode = *substitute;
-				*substitute = tmp;
+
+/* this is a little bit tricky to understand but easy once you visualize
+ * there are 4 main situations:
+ * a) the node have only a left child. For example node d. Just subtitute the node by
+ *      its left child. In case of node d is subtituted by node h.
+ * 
+ * b) the node has no children. For example nodes f, h, i, j and k
+ *      this is done in the same way thar case a, just sustitute the node by the
+ *      left child of the deleted node. In this case a is NULL so the node is deleted.
+ * 3.
+ * c) node 
+ * 
+ *           __a__                           __a__
+ *          /     \                         /     \
+ *        *b       c                       i       c
+ *        / \     / \                     / \     / \
+ *       d   e   f   g                   d   e   f   g
+ *      /   / \       \                 /   / \       \
+ *     h  *i   j       k               h   l   j       k
+ *          \                               
+ *           l                               
+ */
+int avl_tree_remove(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
+	avl_stack_t ts;
+	if (!stack) stack = &ts;
+	if (avl_tree_search(index, node, stack)) {
+		avl_node_t **inode = STACK_POP(stack);
+		avl_node_t *p = *inode;		
+		if (p->right) {
+			if (p->left) {
+				STACK_PUSH(stack,inode);
+				unsigned int t = stack->top;
+				traverse_left(stack, &p->right);
+				avl_node_t **sus = STACK_POP(stack);
+				avl_node_t *p2 = *sus;
+				stack->nodeptr[t] = &p2->right;
+				
+				p2->left = p->left;
+				p2->balance = p->balance;
+				if (p2 != p->right) {	
+					*sus = p2->right;
+					p2->right = p->right;
+				} 
+				
+				*inode = p2;
+				inode = sus;
+			} else {
+				*inode = p->right;
 			}
-			inode = substitute;
 		} else {
-			*inode = (*inode)->left;
+			*inode = p->left;
 		}
+		
 		/* after node deleted start balance */
-		while (stack.top) {
-			avl_node_t **parentptr = STACK_POP(&stack);
+		
+		while (stack->top) {
+			avl_node_t **parentptr = STACK_POP(stack);
 			avl_node_t *parent = *parentptr;
-			if (&(parent->left) == inode)
+			/*if (&(parent->left) == inode) {
 				parent->balance++;
-			else if (&(parent->right) == inode)
+			} else if (&(parent->right) == inode) {
 				parent->balance--;	
+			}*/
+			parent->balance = avl_node_get_balance(parent);
 			*parentptr = balance_node(parent);
 			if ((*parentptr)->balance != 0) break;
-			inode = parentptr;
+			inode = parentptr; 
 		}
 		return 0;
 	}
 	return 1;
 }
 
-/**
- *   This function should be called ONLY after you have previously copied the
- * avl_node_t structure from orig to dest and also copied the key or keys used by the
- * index compare function in the container structure.
- * This means that avl_tree_replace DO NOT reindex the tree, it just change the ponters
- * inside the tree. If you want change the keys just call avl_tree_remove with orig and 
- * after that call avl_insert with dest but do not use avl_tree_replace.
- *   Then yoy may ask what is the point of include this function at all. Remember that   
- * 
- */
  
- /*
-int avl_tree_replace(avl_tree_t *index, avl_node_t *orig, avl_node_t *dest) {
-	if (index && orig && dest) {
-		avl_stack_t stack;
-		avl_node_t **inode = index->search(index, orig, &stack);
-		if (index->search(index, orig, &stack)) {
-			avl_node_t **inode = STACK_POP(&stack);
-			*inode = dest;
-			if (stack.top) {
-				inode = STACK_POP(&stack);
-				if ((*inode)->left == orig)
-					(*inode)->left = dest;
-				else
-					(*inode)->right = dest;
+/*
+int avl_tree_replace(avl_tree_t *index, avl_node_t *oldnode, avl_node_t *newnode, avl_stack_t *stack) {
+	if (index && oldnode && newnode) {
+		avl_stack_t ts;
+		if (!stack) {
+			stack = &ts;
+			avl_tree_search(index, oldnode, stack);
+		}
+		int c;
+		for (c = 0; c < stack->top; c++) 
+			avl_node_t **inode = stack->nodeptr[c];
+			if (*inode == oldnode) {
+				(*newnode)->left = (*oldnode)->left;
+				(*newnode)->right = (*oldnode)->right;
+				(*newnode)->balance = (*oldnode)->balance;
+				*inode = newnode;
+				return 0;
 			}	
-			return 0;
 		}
 	}
 	return 1;
-}*/
-
+}
+*/
 /* iterator functions */
 
 void avl_iterator_init(avl_iterator_t *iterator, avl_tree_t *index, int direction) {	
@@ -345,7 +331,7 @@ void avl_iterator_move_last(avl_iterator_t *iterator) {
 	avl_stack_t *stack = &iterator->stack;
 	stack->top = 0;
 	avl_node_t **root = &(iterator->index->root);
-	trasverse_right(stack, root);
+	traverse_right(stack, root);
 	if (iterator->direction && stack->top) {
 		stack->nodeptr[0] = stack->nodeptr[stack->top-1];
 		stack->top = 1;
@@ -381,7 +367,7 @@ avl_node_t *avl_iterator_get(avl_iterator_t *iterator) {
 		if (iterator->direction)
 			traverse_left(stack, &(*current)->right);
 		else
-			trasverse_right(stack, &(*current)->left);
+			traverse_right(stack, &(*current)->left);
 		return *current;
 	}
 	return NULL;

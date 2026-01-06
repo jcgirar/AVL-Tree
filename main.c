@@ -101,6 +101,13 @@ void iterate_age() {
 	}
 }
 
+int id_compare(avl_node_t *a, avl_node_t *b) {
+	struct person *person_a = avl_container_of(a, struct person, age_node);
+	struct person *person_b = avl_container_of(b, struct person, age_node);
+	int dif = ((person_a->id < person_b->id) ? -1 : (person_a->id > person_b->id));
+	return dif;
+}
+
 int fullname_compare(avl_node_t *a, avl_node_t *b) {
 	struct person *person_a = avl_container_of(a, struct person, fullname_node);
 	struct person *person_b = avl_container_of(b, struct person, fullname_node);
@@ -123,8 +130,9 @@ int age_compare(avl_node_t *a, avl_node_t *b) {
 	if (dif == 0) dif = ((person_a->id < person_b->id) ? -1 : (person_a->id > person_b->id));
 	return dif;
 }
+
 int main() {
-	avl_tree_init(&id_tree, NULL);
+	avl_tree_init(&id_tree, id_compare);
 	avl_tree_init(&fullname_tree, fullname_compare);
 	avl_tree_init(&age_tree, age_compare);
 	fill_trees();
@@ -132,7 +140,7 @@ int main() {
 	iterate_id();
 	printf("Records ordered by Fullname\n");
 	iterate_fullname();
-	printf("Records ordered by age\n");
+	printf("Records ordered by Age\n");
 	iterate_age();
 	return 0;
 }
