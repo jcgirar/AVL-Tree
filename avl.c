@@ -208,16 +208,29 @@ static inline void traverse_right(avl_stack_t *stack, avl_node_t **inode) {
 }
 
 
-/* this is a little bit tricky to understand but easy once you visualize
- * there are 4 main situations:
- * a) the node have only a left child. For example node d. Just subtitute the node by
- *      its left child. In case of node d is subtituted by node h.
+/* function avl_tree_remove is divided in two parts: one is remove the node from
+ * the tree that its common with any other type of BST tree. And the second is balance
+ * the tree after deletion. I writed both parts but in the same function but maybe
+ * in the future i divide it in to functions (sugesions?)
  * 
- * b) the node has no children. For example nodes f, h, i, j and k
- *      this is done in the same way thar case a, just sustitute the node by the
- *      left child of the deleted node. In this case a is NULL so the node is deleted.
- * 3.
- * c) node 
+ * this is a little bit tricky to understand but easy once you visualize it.
+ * There are 4 cases:
+ * 
+ * a) the node have only a left child or no child at all. For example node d. Just subtitute the 
+ * 		node by its left child. In case of node d is subtituted by node h. In case of nodes
+ *		f,h,i,j and k are substituted by NULL so node its deleted.
+ * 
+ * b) the node have only right child. For example node g. This this is done the same way thar
+ * 		case a, but instead of left node substitute deleted node by its right node.
+ *
+ * If node have both children then trasverse the tree nodes to find the next in order node.
+ * and save to the stack the intermediate nodes. Also substitute in the stack the address
+ * of the right node of deleted by the address of right node of the susbtitute node. copy 
+ * to the substitute node the left node and the balance of deleted node.
+ * 
+ * c) If the next node is the right leaf of the node to be deleted. 
+ * 
+ * d) This is the example node with * in the diagram. ( NOTE: I have to complete this doc)  
  * 
  *           __a__                           __a__
  *          /     \                         /     \
@@ -242,36 +255,41 @@ int avl_tree_remove(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 				traverse_left(stack, &p->right);
 				avl_node_t **sus = STACK_POP(stack);
 				avl_node_t *p2 = *sus;
-				stack->nodeptr[t] = &p2->right;
-				
+				if (stack->top > t) stack->nodeptr[t] = &p2->right;				
 				p2->left = p->left;
 				p2->balance = p->balance;
-				if (p2 != p->right) {	
+				if (p2 == p->right) {
+					/* case c*/
+					*inode = p2;
+					inode = &(p2->right);	
+				} else {
+					/* case d */
 					*sus = p2->right;
 					p2->right = p->right;
-				} 
-				
-				*inode = p2;
-				inode = sus;
+					*inode = p2;
+					inode = sus;
+				}
 			} else {
+				/* case b */
 				*inode = p->right;
 			}
 		} else {
+			/* case a */
 			*inode = p->left;
 		}
-		
-		/* after node deleted start balance */
-		
+		/* after node deleted start balance using the resulting stack */	
 		while (stack->top) {
 			avl_node_t **parentptr = STACK_POP(stack);
 			avl_node_t *parent = *parentptr;
-			/*if (&(parent->left) == inode) {
+			if (&(parent->left) == inode) {
 				parent->balance++;
 			} else if (&(parent->right) == inode) {
 				parent->balance--;	
-			}*/
-			parent->balance = avl_node_get_balance(parent);
+			}
 			*parentptr = balance_node(parent);
+			/* if balance of node is diferent to 0 that means that the previous
+			 * balance was 0 so it is not necesary to adjust balance the previous
+			 * nodes (see WIKIPEDIA avl trees delete operation) */
 			if ((*parentptr)->balance != 0) break;
 			inode = parentptr; 
 		}
@@ -280,7 +298,6 @@ int avl_tree_remove(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 	return 1;
 }
 
- 
 /*
 int avl_tree_replace(avl_tree_t *index, avl_node_t *oldnode, avl_node_t *newnode, avl_stack_t *stack) {
 	if (index && oldnode && newnode) {
