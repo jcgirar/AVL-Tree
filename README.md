@@ -28,11 +28,17 @@ Unlike conventional implementations that wrap user payloads behind `void *` poin
 
 ## Building & Integration
 
-There are no external dependencies beyond the C standard library (`<stddef.h>`). Simply copy `avl.h` and `avl.c` into your project and compile:
+There are no external dependencies beyond the C standard library (`<stddef.h>`,`<stdint.h>`). Simply copy `avl.h` and `avl.c` into your project and compile:
 
 ```bash
 gcc -O2 -Wall -Wextra example.c avl.c -o avl_example
 ./avl_example
+```
+If you want to run the demo and test.
+```bash
+make          # Builds libavl.a and avl_example
+./avl_example # Runs the multi-index demo
+make test     # Compiles and runs test.c with sanitizers
 ```
 
 ## Quick Start
