@@ -40,6 +40,13 @@ make          # Builds libavl.a and avl_example
 ./avl_example # Runs the multi-index demo
 make test     # Compiles and runs test.c with sanitizers
 ```
+### Customizing Stack Depth (`AVL_STACK_SIZE`)
+
+`AVL_STACK_SIZE` scales automatically by default (32 or 64 depending on architecture). To override it for embedded targets, define it via compiler flags:
+
+```bash
+gcc -O2 -DAVL_STACK_SIZE=24 example.c avl.c -o avl_example
+```
 
 ## Quick Start
 
