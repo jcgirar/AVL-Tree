@@ -13,6 +13,7 @@
 #define AVL_H_INCLUDED 1
 
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * @defgroup macros Utility Macros
@@ -83,10 +84,17 @@ struct avl_node {
 /**
  * @brief Maximum traversal stack depth.
  *
- * A stack size of 32 supports balanced AVL trees containing millions of nodes
- * without recursion.
+ * Automatically scales to `64` on 64-bit targets (`UINTPTR_MAX > 0xffffffffU`)
+ * and `32` on 32-bit targets to cover worst-case AVL tree heights without
+ * recursion. Can be overridden at compile time via `-DAVL_STACK_SIZE=<N>`.
  */
-#define AVL_STACK_SIZE 32
+#ifndef AVL_STACK_SIZE
+    #if UINTPTR_MAX > 0xffffffffU
+        #define AVL_STACK_SIZE 64
+    #else
+        #define AVL_STACK_SIZE 32
+    #endif
+#endif
 
 /** @brief Pushes a node pointer reference onto an `avl_stack_t`. */
 #define STACK_PUSH(stack, value) ((stack)->nodeptr[(stack)->top++] = (value))
