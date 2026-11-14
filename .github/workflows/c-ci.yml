@@ -1,1 +1,32 @@
+name: C Build & Test
 
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    name: Build & Test (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build static library and example
+        run: make CC=${{ matrix.compiler }} CFLAGS="-std=c99 -O2 -Wall -Wextra -Wpedantic -Werror"
+
+      - name: Run example binary
+        run: ./avl_example
+
+      - name: Build and run unit tests with Address & Undefined Sanitizers
+        run: |
+          ${{ matrix.compiler }} -std=c99 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Wpedantic -Werror test.c avl.c -o avl_test
+          ./avl_test
+          
