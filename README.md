@@ -1,5 +1,5 @@
 # Intrusive AVL Tree Library in ISO C
-![C Build & Test](https://github.com)
+[![C Build & Test](https://github.com/jcgirar/AVL-Tree/actions/workflows/c-ci.yml/badge.svg)](https://github.com/jcgirar/AVL-Tree/actions/workflows/c-ci.yml)
 
 A lightweight, **non-recursive**, **intrusive**, and **zero-allocation** AVL self-balancing binary search tree library written in standard ISO C.
 
