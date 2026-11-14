@@ -130,6 +130,25 @@ void print_tree(avl_tree_t *tree, size_t node_offset) {
 | `avl_iterator_have_data(iter)` | Returns non-zero while unvisited nodes remain in the iterator stack. |
 | `avl_iterator_get(iter)` | Returns the current `avl_node_t *` and advances to the next node. |
 
+## Design Rationale & Related Work
+
+This library was designed around strict memory-footprint and predictability constraints for embedded and systems programming:
+
+* **Parentless Nodes vs. Explicit Traversal Stacks (`avl_stack_t`):**
+  To minimize per-record memory overhead when maintaining multiple indexes, `avl_node_t` stores only `left`, `right`, and `balance` (omitting a `parent` pointer). All ancestor tracking is offloaded to stack-allocated `avl_stack_t` instances, which can also be reused between `avl_tree_search()` and `avl_tree_insert()` to avoid redundant tree traversals when enforcing key uniqueness.
+* **Branchless Table-Driven Balance Updates:**
+  Instead of computing post-rotation balance factors via conditional branches or height recalculations, `rotate_left()` and `rotate_right()` resolve the updated balance factors in $O(1)$ using a precomputed lookup table (`balances[5][5][2]`).
+* **Runtime Offset Resolution (`avl_container_in`):**
+  Alongside the standard compile-time `avl_container_of()` macro, `avl_container_in()` allows generic functions and iterators to resolve parent structures dynamically using runtime `offsetof()` values.
+
+### Related Projects
+
+If you are evaluating intrusive, zero-allocation AVL tree implementations in C, you may also want to explore these excellent projects that explore different trade-offs in the same design space:
+
+* **[ebiggers/avl_tree](https://github.com):** A widely used intrusive, non-recursive AVL implementation that packs the `parent` pointer and balance factor into a single word per node, enabling parent-pointer traversal without external stack state.
+* **[psqli/avl_tree](https://github.com):** A non-recursive, parentless intrusive AVL tree implementation that similarly uses an explicit traversal history stack to avoid storing parent pointers inside nodes.
+* 
+
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
