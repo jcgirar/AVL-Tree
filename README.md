@@ -41,7 +41,7 @@ Add one `avl_node_t` member per independent index you want to maintain:
 
 struct person {
     unsigned int id;
-    char name;
+    char name[16];
     unsigned int age;
 
     /* Intrusive tree nodes */
