@@ -1,3 +1,12 @@
+
+/**
+ * @file avl.c
+ * @brief AVL tree implementation in ISO c
+ * 
+ * This lib do not manage memory alocation so the caller program must do it. This is a style
+ * used by kernel programers and I thinks is the style more apropiate for a tool lib like
+ * this.
+ */
 #include <stddef.h>
 #include <stdio.h>
 
@@ -46,15 +55,6 @@ int avl_node_get_balance(avl_node_t *node) {
 	if (node) 
 		return avl_node_get_height(node->right) - avl_node_get_height(node->left);
 	return 0;
-}
-
-int	avl_tree_init(avl_tree_t *index, int (*compare)(avl_node_t *, avl_node_t *)) {
-	if (index && compare) {
-		index->compare = compare;
-		index->root = NULL;
-		return 0;
-	}
-	return 1;
 }
 
 /* RIGHT ROTATION diagram

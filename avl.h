@@ -7,8 +7,10 @@
 /* utility macro because avl_node_t must always be included in other structures
  * and this macro is used to get that container structure  */
 #define avl_container_of(ptr, type, member) (type *)((char *)(ptr) - offsetof(type, member))
-/* utility macro used to get the uint key just after the avl_node_t */
-#define AVL_UINTKEY(ptr) *((unsigned int *)((char *)(ptr)+sizeof(avl_node_t)))
+#define avl_container_in(ptr, type, offset) (type *)((char *)(ptr) - offset)
+#define avl_compare(a,b) (a < b ? -1 : a > b)
+#define avl_tree_init(func) {.compare = func, .root = NULL}
+
 
 typedef struct avl_node avl_node_t;
 struct avl_node {
@@ -27,10 +29,11 @@ struct avl_stack {
 	unsigned int top;
 };
 
+typedef int avl_compare_t (avl_node_t *, avl_node_t *);
 
 typedef struct avl_tree avl_tree_t;
 struct avl_tree {
-	int (*compare)(avl_node_t *, avl_node_t *);
+	avl_compare_t *compare;
 	avl_node_t *root;
 };
 
@@ -45,7 +48,7 @@ typedef struct {
 
 int 			avl_node_get_height(avl_node_t *);
 int				avl_node_get_balance(avl_node_t *);
-int				avl_tree_init(avl_tree_t *, int (*)(avl_node_t *, avl_node_t *));
+//int				avl_tree_init(avl_tree_t *, avl_compare_t *);
 avl_node_t *	avl_tree_search(avl_tree_t *, avl_node_t *, avl_stack_t *);
 int 			avl_tree_insert(avl_tree_t *, avl_node_t *, avl_stack_t *);
 int 			avl_tree_remove(avl_tree_t *, avl_node_t *, avl_stack_t *);
