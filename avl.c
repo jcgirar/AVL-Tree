@@ -1,17 +1,24 @@
-
 /**
  * @file avl.c
- * @brief AVL tree implementation in ISO c
- * 
- * This lib do not manage memory alocation so the caller program must do it. This is a style
- * used by kernel programers and I thinks is the style more apropiate for a tool lib like
- * this.
+ * @brief Non-recursive, intrusive AVL tree implementation in ISO C.
+ *
+ * This library does not perform dynamic memory allocation; the caller owns
+ * and manages the memory of all container structures. Tree traversal,
+ * rebalancing, and iteration are performed iteratively using explicit
+ * pointer-to-pointer stacks (`avl_node_t **`).
  */
 #include <stddef.h>
-#include <stdio.h>
 
 #include "avl.h"
 
+/**
+ * @brief Precomputed post-rotation balance factor lookup table.
+ *
+ * Indexed as `balances[a_balance + 2][b_balance + 2][node_index]`, where:
+ * - `a_balance` is the pre-rotation balance factor of the pivot root `a` (`-2..2`).
+ * - `b_balance` is the pre-rotation balance factor of the promoted child `b` (`-2..2`).
+ * - `node_index = 0` yields the new balance factor for `a`, and `1` for `b`.
+ */
 const int balances[5][5][2] = {
 	{{1,0},{0,0},{-1,1},{0,0},{0,0}},
 	{{1,1},{1,1},{0,1},{0,2},{0,0}},
@@ -20,27 +27,15 @@ const int balances[5][5][2] = {
 	{{0,0},{0,0},{1,-1},{0,0},{-1,0}}
 };
 
-/* void print_balances() {
-	printf("\nint balances[5][5][2] = {\n");
-	int a;
-	for (a=0; a<5; a++) {
-		printf("\t{");
-		int b;
-		for (b=0; b<5; b++) {
-			printf("{%d,%d}", balances[a][b][0], balances[a][b][1]);
-			if (b!=4) printf(",");
-		}
-		if (a==4)
-			printf("}\n");
-		else
-			printf("},\n");
-	}
-	printf("};\n");
-}*/
-
-
-/* this two recursive functions are used to test if the balances are correct
- * but are not used by the other functions */
+/**
+ * @brief Recursively computes the height of a subtree.
+ *
+ * @note Intended for debugging and invariant verification only; not used by
+ *       core tree operations.
+ *
+ * @param node Root of the subtree (may be `NULL`).
+ * @return Height of the subtree (`0` if `node` is `NULL`).
+ */
 int avl_node_get_height(avl_node_t *node) {
 	unsigned int height = 0;
 	if (node) {
@@ -51,36 +46,40 @@ int avl_node_get_height(avl_node_t *node) {
 	return height;
 }
 
+/**
+ * @brief Recursively computes the balance factor (`height(right) - height(left)`).
+ *
+ * @note Intended for debugging and invariant verification only.
+ *
+ * @param node Node to inspect (may be `NULL`).
+ * @return Balance factor of `node`, or `0` if `node` is `NULL`.
+ */
 int avl_node_get_balance(avl_node_t *node) {
 	if (node) 
 		return avl_node_get_height(node->right) - avl_node_get_height(node->left);
 	return 0;
 }
 
-/* RIGHT ROTATION diagram
- * 
- *  before rotation:
- *  
- *         c
- *        / 
- *       b
- *      / \
- *     a   x
- * 
- *  after rotation:
- * 
- *        b
- *       / \
- *      a   c
- *         /
- *        x
- * */
-
+/**
+ * @brief Performs a single right rotation around node `a`.
+ *
+ * @verbatim
+ *   Before:          After:
+ *       a              b
+ *      /              / \
+ *     b      ===>    c   a
+ *    / \                /
+ *   c   x              x
+ * @endverbatim
+ *
+ * @param a Unbalanced subtree root whose left child `b` is promoted.
+ * @return Pointer to the new subtree root (`b`).
+ */
 static inline avl_node_t *rotate_right(avl_node_t *a) {
 	/* get indexes to update balances */
 	int ab = a->balance + 2;
 	int bb = a->left->balance + 2;
-	/*make rotation */
+	/* make rotation */
 	avl_node_t *b = a->left; 
 	a->left = b->right;
 	b->right = a;
@@ -90,25 +89,21 @@ static inline avl_node_t *rotate_right(avl_node_t *a) {
 	return b;
 }
 
-/* LEFT ROTATION diagram
- * 
- *  before rotation:
- *  
- *     a    
- *      \
- *       b
- *      / \
- *     x   c
- * 
- *  after rotation:
- * 
- *        b
- *       / \
- *      a   c
- *       \  
- *        x
- * */
-
+/**
+ * @brief Performs a single left rotation around node `a`.
+ *
+ * @verbatim
+ *   Before:          After:
+ *     a                b
+ *      \              / \
+ *       b    ===>    a   c
+ *      / \            \
+ *     x   c            x
+ * @endverbatim
+ *
+ * @param a Unbalanced subtree root whose right child `b` is promoted.
+ * @return Pointer to the new subtree root (`b`).
+ */
 static inline avl_node_t *rotate_left(avl_node_t *a) {
 	int ab = a->balance + 2;
 	int bb = a->right->balance + 2;
@@ -122,6 +117,15 @@ static inline avl_node_t *rotate_left(avl_node_t *a) {
 	return b;
 }
 
+/**
+ * @brief Rebalances `node` if its balance factor has reached `-2` or `+2`.
+ *
+ * Automatically performs double rotations (Left-Right or Right-Left) when the
+ * heavy child leans in the opposite direction.
+ *
+ * @param node Subtree root to rebalance.
+ * @return Pointer to the balanced subtree root.
+ */
 static inline avl_node_t *balance_node(avl_node_t *node) {
 	switch (node->balance) {
 		case -2:
@@ -136,20 +140,23 @@ static inline avl_node_t *balance_node(avl_node_t *node) {
 	return node;
 }
 
+/**
+ * @copydoc avl_tree_search
+ */
 avl_node_t *avl_tree_search(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 	if (index && node) {
 		avl_node_t **inode = &index->root;
 		int dif;
 		if (stack) 
-			stack->top =0;
+			stack->top = 0;
 		/* search the tree stacking the intermediate nodes */
 		do {
 			if (stack) STACK_PUSH(stack, inode);
 			if (*inode) {
 				dif = index->compare(*inode, node);
-				if (dif>0) 
+				if (dif > 0) 
 					inode = &(*inode)->left;
-				else if (dif<0) 
+				else if (dif < 0) 
 					inode = &(*inode)->right;
 				else   
 					return *inode;
@@ -159,16 +166,18 @@ avl_node_t *avl_tree_search(avl_tree_t *index, avl_node_t *node, avl_stack_t *st
 	return NULL;
 }
 
-
+/**
+ * @copydoc avl_tree_insert
+ */
 int avl_tree_insert(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 	avl_stack_t ts;
 	if (!stack) {
 		stack = &ts;
 		/* if node found return because no insert is possible */
-		if (avl_tree_search(index,node,stack)) return 1;
+		if (avl_tree_search(index, node, stack)) return 1;
 	}
 	avl_node_t **inode = STACK_POP(stack);
-	/* not possible to insert on an arready ocupied inode  */
+	/* not possible to insert on an already occupied inode */
 	if (*inode) return 1;
 	/* init node struct */
 	node->balance = 0;
@@ -176,7 +185,7 @@ int avl_tree_insert(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 	node->right = NULL;
 	/* insert the node in the last inode stacked */
 	*inode = node;
-	/*start balance */
+	/* start balance */
 	while (stack->top) {
 		avl_node_t **parentptr = STACK_POP(stack);
 		avl_node_t *parent = *parentptr;		
@@ -185,14 +194,17 @@ int avl_tree_insert(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 		else
 			parent->balance++;	
 		*parentptr = balance_node(parent);
-		/* if current node is balanced then no further balances necesary */
+		/* if current node is balanced then no further balances necessary */
 		if ((*parentptr)->balance == 0) break;
 		inode = parentptr;
 	}
-	/* return NOERROR*/ 
+	/* return NOERROR */ 
 	return 0; 
 }
 
+/**
+ * @brief Descends down the leftmost spine from `inode`, pushing all links onto `stack`.
+ */
 static inline void traverse_left(avl_stack_t *stack, avl_node_t **inode) {
 	while (*inode) {
 		STACK_PUSH(stack, inode);
@@ -200,6 +212,9 @@ static inline void traverse_left(avl_stack_t *stack, avl_node_t **inode) {
 	} 
 }
 
+/**
+ * @brief Descends down the rightmost spine from `inode`, pushing all links onto `stack`.
+ */
 static inline void traverse_right(avl_stack_t *stack, avl_node_t **inode) {
 	while (*inode) {
 		STACK_PUSH(stack, inode);
@@ -207,41 +222,42 @@ static inline void traverse_right(avl_stack_t *stack, avl_node_t **inode) {
 	}
 }
 
-
-/* function avl_tree_remove is divided in two parts: one is remove the node from
- * the tree that its common with any other type of BST tree. And the second is balance
- * the tree after deletion. I writed both parts but in the same function but maybe
- * in the future i divide it in to functions (sugesions?)
- * 
- * this is a little bit tricky to understand but easy once you visualize it.
- * There are 4 cases:
- * 
- * a) the node have only a left child or no child at all. For example node d. Just subtitute the 
- * 		node by its left child. In case of node d is subtituted by node h. In case of nodes
- *		f,h,i,j and k are substituted by NULL so node its deleted.
- * 
- * b) the node have only right child. For example node g. This this is done the same way thar
- * 		case a, but instead of left node substitute deleted node by its right node.
+/**
+ * @copydoc avl_tree_remove
  *
- * If node have both children then trasverse the tree nodes to find the next in order node.
- * and save to the stack the intermediate nodes. Also substitute in the stack the address
- * of the right node of deleted by the address of right node of the susbtitute node. copy 
- * to the substitute node the left node and the balance of deleted node.
- * 
- * c) If the next node is the right leaf of the node to be deleted. 
- * 
- * d) This is the example node with * in the diagram. ( NOTE: I have to complete this doc)  
- * 
+ * @details
+ * Removal is handled in two phases: standard BST node unlinking (4 cases)
+ * followed by bottom-up stack rebalancing:
+ *
+ * - **Case (a) — No right child (`p->right == NULL`):**
+ *   Replaces `p` with `p->left` (or `NULL` if `p` is a leaf).
+ *
+ * - **Case (b) — Only right child (`p->left == NULL`):**
+ *   Replaces `p` with `p->right`.
+ *
+ * - **Case (c) — Two children, immediate right child is in-order successor (`p2 == p->right`):**
+ *   `p2` takes `p`'s left child and balance factor, and directly replaces `p`.
+ *
+ * - **Case (d) — Two children, deeper in-order successor (`p2 != p->right`):**
+ *   Finds the leftmost node `p2` in `p->right`, patches the stack entry that
+ *   pointed to `p->right` so it points to `&p2->right`, promotes `p2` into `p`'s
+ *   slot, and attaches `p2->right` to `p2`'s former parent (`*sus`).
+ *
+ * @verbatim
+ *   Case (d) example (deleting *b, successor is *i):
+ *
  *           __a__                           __a__
  *          /     \                         /     \
  *        *b       c                       i       c
- *        / \     / \                     / \     / \
+ *        / \     / \        ===>         / \     / \
  *       d   e   f   g                   d   e   f   g
  *      /   / \       \                 /   / \       \
  *     h  *i   j       k               h   l   j       k
- *          \                               
- *           l                               
+ *          \
+ *           l
+ * @endverbatim
  */
+
 int avl_tree_remove(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 	avl_stack_t ts;
 	if (!stack) stack = &ts;
@@ -298,41 +314,31 @@ int avl_tree_remove(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 	return 1;
 }
 
-/*
-int avl_tree_replace(avl_tree_t *index, avl_node_t *oldnode, avl_node_t *newnode, avl_stack_t *stack) {
-	if (index && oldnode && newnode) {
-		avl_stack_t ts;
-		if (!stack) {
-			stack = &ts;
-			avl_tree_search(index, oldnode, stack);
-		}
-		int c;
-		for (c = 0; c < stack->top; c++) 
-			avl_node_t **inode = stack->nodeptr[c];
-			if (*inode == oldnode) {
-				(*newnode)->left = (*oldnode)->left;
-				(*newnode)->right = (*oldnode)->right;
-				(*newnode)->balance = (*oldnode)->balance;
-				*inode = newnode;
-				return 0;
-			}	
-		}
-	}
-	return 1;
-}
-*/
-/* iterator functions */
-
+/**
+ * @copydoc avl_iterator_init
+ */
 void avl_iterator_init(avl_iterator_t *iterator, avl_tree_t *index, int direction) {	
 	iterator->index = index;
-	iterator ->direction = direction;
+	iterator->direction = direction;
 	iterator->stack.top = 0;
 }
 
+/**
+ * @copydoc avl_iterator_have_data
+ */
 inline int avl_iterator_have_data(avl_iterator_t *iterator) {
 	return iterator->stack.top;
 }
 
+/**
+ * @copydoc avl_iterator_move_first
+ *
+ * @details
+ * Seeks the leftmost (minimum key) node in the tree. When traversing in
+ * descending order (`AVL_ITERATOR_LEFT`), intermediate left-spine ancestors
+ * are discarded so that subsequent calls to `avl_iterator_get()` terminate
+ * immediately after yielding the minimum node.
+ */
 void avl_iterator_move_first(avl_iterator_t *iterator) {
 	avl_stack_t *stack = &iterator->stack;
 	stack->top = 0;
@@ -344,6 +350,15 @@ void avl_iterator_move_first(avl_iterator_t *iterator) {
 	}
 }
 
+/**
+ * @copydoc avl_iterator_move_last
+ *
+ * @details
+ * Seeks the rightmost (maximum key) node in the tree. When traversing in
+ * ascending order (`AVL_ITERATOR_RIGHT`), intermediate right-spine ancestors
+ * are discarded so that subsequent calls to `avl_iterator_get()` terminate
+ * immediately after yielding the maximum node.
+ */
 void avl_iterator_move_last(avl_iterator_t *iterator) {
 	avl_stack_t *stack = &iterator->stack;
 	stack->top = 0;
@@ -355,6 +370,16 @@ void avl_iterator_move_last(avl_iterator_t *iterator) {
 	}
 }
 
+/**
+ * @copydoc avl_iterator_move
+ *
+ * @details
+ * Searches for an exact key match matching `node`. Only ancestor turns
+ * relevant to the configured `direction` are pushed onto the stack so that
+ * `avl_iterator_get()` yields `node` first and continues in-order from that
+ * position. If no exact match exists, the iterator stack is cleared
+ * (`avl_iterator_have_data()` returns `0`).
+ */
 void avl_iterator_move(avl_iterator_t *iterator, avl_node_t *node) {
 	avl_stack_t *stack = &iterator->stack;
 	stack->top = 0;			
@@ -362,21 +387,24 @@ void avl_iterator_move(avl_iterator_t *iterator, avl_node_t *node) {
 	avl_node_t **inode = &index->root;
 	while (*inode) {
 		int dif = index->compare(*inode, node);
-		if (dif>0) {
-			if (iterator->direction) STACK_PUSH(stack,inode); 
+		if (dif > 0) {
+			if (iterator->direction) STACK_PUSH(stack, inode); 
 			inode = &(*inode)->left;
-		} else if (dif<0) {
-			if (!iterator->direction) STACK_PUSH(stack,inode);
+		} else if (dif < 0) {
+			if (!iterator->direction) STACK_PUSH(stack, inode);
 			inode = &(*inode)->right;
 		} else {
 			/* found */
-			STACK_PUSH(stack,inode); 		
+			STACK_PUSH(stack, inode); 		
 			return;
 		}
 	}
 	stack->top = 0;
 }
 
+/**
+ * @copydoc avl_iterator_get
+ */
 avl_node_t *avl_iterator_get(avl_iterator_t *iterator) {
 	avl_stack_t *stack = &iterator->stack;
 	if (stack->top) { 
