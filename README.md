@@ -20,7 +20,7 @@ Unlike conventional implementations that wrap user payloads behind `void *` poin
 ```text
 ├── avl.h        # Public API, macros, node/tree structs, and iterator definitions
 ├── avl.c        # Non-recursive AVL rotations, search, insert, remove, and iterators
-└── example.c    # Multi-index usage example indexing records by ID, name, and age
+├── example.c    # Multi-index usage example indexing records by ID, name, and age
 ├── test.c       # Automated unit tests
 ├── Makefile     # Build targets
 └── LICENSE      # MIT License
