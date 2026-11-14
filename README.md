@@ -1,5 +1,6 @@
 # Intrusive AVL Tree Library in ISO C
 ![C Build & Test](https://github.com)
+
 A lightweight, **non-recursive**, **intrusive**, and **zero-allocation** AVL self-balancing binary search tree library written in standard ISO C.
 
 Unlike conventional implementations that wrap user payloads behind `void *` pointers and rely on `malloc`/`free`, this library embeds the tree node (`avl_node_t`) directly inside your own `struct` definitions (similar to Linux kernel intrusive data structures). This eliminates heap fragmentation, improves cache locality, and lets a single record belong to multiple sorted trees simultaneously without duplicating data.
