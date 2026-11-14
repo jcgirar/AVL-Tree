@@ -21,6 +21,9 @@ Unlike conventional implementations that wrap user payloads behind `void *` poin
 ├── avl.h        # Public API, macros, node/tree structs, and iterator definitions
 ├── avl.c        # Non-recursive AVL rotations, search, insert, remove, and iterators
 └── example.c    # Multi-index usage example indexing records by ID, name, and age
+├── test.c                       # Automated unit tests
+├── Makefile                     # Build targets
+└── LICENSE                      # MIT License
 ```
 
 ## Building & Integration
@@ -147,8 +150,7 @@ If you are evaluating intrusive, zero-allocation AVL tree implementations in C, 
 
 * **[ebiggers/avl_tree](https://github.com):** A widely used intrusive, non-recursive AVL implementation that packs the `parent` pointer and balance factor into a single word per node, enabling parent-pointer traversal without external stack state.
 * **[psqli/avl_tree](https://github.com):** A non-recursive, parentless intrusive AVL tree implementation that similarly uses an explicit traversal history stack to avoid storing parent pointers inside nodes.
-* 
-
+ 
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
