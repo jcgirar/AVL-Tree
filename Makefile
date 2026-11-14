@@ -1,6 +1,7 @@
 CC       ?= gcc
 AR       ?= ar
 CFLAGS   := -std=c99 -O2 -Wall -Wextra -Wpedantic
+SANFLAGS := -std=c99 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Wpedantic
 ARFLAGS  := rcs
 
 LIB_SRC  := avl.c
@@ -10,7 +11,11 @@ LIB_NAME := libavl.a
 EX_SRC   := example.c
 EX_BIN   := avl_example
 
-.PHONY: all lib example docs clean
+
+TEST_SRC := test.c
+TEST_BIN := avl_test
+
+.PHONY: all lib example test docs clean
 
 # Compila tanto la librería estática como el ejemplo por defecto
 all: $(LIB_NAME) $(EX_BIN)
@@ -27,6 +32,13 @@ example: $(EX_BIN)
 $(EX_BIN): $(EX_SRC) $(LIB_OBJ)
 	$(CC) $(CFLAGS) $^ -o $@
 
+# Compila y ejecuta la bateria de pruebas con sanitizers
+test: $(TEST_BIN)
+	./$(TEST_BIN)
+
+$(TEST_BIN): $(TEST_SRC) $(LIB_SRC) avl.h
+	$(CC) $(SANFLAGS) $(TEST_SRC) $(LIB_SRC) -o $@
+
 %.o: %.c avl.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -41,5 +53,5 @@ docs:
 
 # Limpia archivos compilados y documentación generada
 clean:
-	rm -f $(LIB_OBJ) $(LIB_NAME) $(EX_BIN) Doxyfile
+	rm -f $(LIB_OBJ) $(LIB_NAME) $(EX_BIN) $(TEST_BIN) Doxyfile
 	rm -rf html latex
