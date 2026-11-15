@@ -18,8 +18,8 @@
  */
 struct person {
 	unsigned int id;
-	char *name;
-	char *surname;
+	char name[16];
+	char surname[32];
 	unsigned int age;
 
 	/* Intrusive index nodes */

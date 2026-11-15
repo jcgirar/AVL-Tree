@@ -144,24 +144,21 @@ static inline avl_node_t *balance_node(avl_node_t *node) {
  * @copydoc avl_tree_search
  */
 avl_node_t *avl_tree_search(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
-	if (index && node) {
+	if (index && index->compare && node && stack) {
 		avl_node_t **inode = &index->root;
-		int dif;
-		if (stack) 
-			stack->top = 0;
+		stack->top = 0;
+		STACK_PUSH(stack, inode);	
 		/* search the tree stacking the intermediate nodes */
-		do {
-			if (stack) STACK_PUSH(stack, inode);
-			if (*inode) {
-				dif = index->compare(*inode, node);
-				if (dif > 0) 
-					inode = &(*inode)->left;
-				else if (dif < 0) 
-					inode = &(*inode)->right;
-				else   
-					return *inode;
-			} else break;
-		} while (1);
+		while (*inode) {
+			int dif = index->compare(*inode, node);
+			if (dif > 0) 
+				inode = &(*inode)->left;
+			else if (dif < 0) 
+				inode = &(*inode)->right;
+			else   
+				return *inode;
+			STACK_PUSH(stack, inode);
+		}
 	}
 	return NULL;
 }
@@ -170,33 +167,35 @@ avl_node_t *avl_tree_search(avl_tree_t *index, avl_node_t *node, avl_stack_t *st
  * @copydoc avl_tree_insert
  */
 int avl_tree_insert(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
-	avl_stack_t ts;
-	if (!stack) {
-		stack = &ts;
-		/* if node found return because no insert is possible */
-		if (avl_tree_search(index, node, stack)) return 1;
-	}
-	avl_node_t **inode = STACK_POP(stack);
-	/* not possible to insert on an already occupied inode */
-	if (*inode) return 1;
-	/* init node struct */
-	node->balance = 0;
-	node->left = NULL;
-	node->right = NULL;
-	/* insert the node in the last inode stacked */
-	*inode = node;
-	/* start balance */
-	while (stack->top) {
-		avl_node_t **parentptr = STACK_POP(stack);
-		avl_node_t *parent = *parentptr;		
-		if (&(parent->left) == inode)
-			parent->balance--;
-		else
-			parent->balance++;	
-		*parentptr = balance_node(parent);
-		/* if current node is balanced then no further balances necessary */
-		if ((*parentptr)->balance == 0) break;
-		inode = parentptr;
+	if (index && node) {
+		avl_stack_t ts;
+		if (!stack) {
+			stack = &ts;
+			/* if node found return because no insert is possible */
+			if (avl_tree_search(index, node, stack)) return 1;
+		} else if (!stack->top) return 1; /* if stack passed is empty no plaze to insert */ 
+		avl_node_t **inode = STACK_POP(stack);
+		/* not possible to insert on an already occupied inode */
+		if (*inode) return 1; 
+		/* init node struct */
+		node->balance = 0;
+		node->left = NULL;
+		node->right = NULL;
+		/* insert the node in the last empty inode stacked */
+		*inode = node;
+		/* start balance */
+		while (stack->top) {
+			avl_node_t **parentptr = STACK_POP(stack);
+			avl_node_t *parent = *parentptr;		
+			if (&(parent->left) == inode)
+				parent->balance--;
+			else
+				parent->balance++;	
+			*parentptr = balance_node(parent);
+			/* if current node is balanced then no further balances necessary */
+			if ((*parentptr)->balance == 0) break;
+			inode = parentptr;
+		}
 	}
 	/* return NOERROR */ 
 	return 0; 
@@ -259,12 +258,19 @@ static inline void traverse_right(avl_stack_t *stack, avl_node_t **inode) {
  */
 
 int avl_tree_remove(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
-	avl_stack_t ts;
-	if (!stack) stack = &ts;
-	if (avl_tree_search(index, node, stack)) {
-		avl_node_t **inode = STACK_POP(stack);
+	if (index && node) {
+		avl_stack_t ts;
+		if (!stack) {
+			stack = &ts;
+			/* if not node found return */
+			if (!avl_tree_search(index, node, stack)) return 1;
+		} else if (!stack->top) return 1; /* if stack passed is empty return */
+	    avl_node_t **inode = STACK_POP(stack);
+		/* not possible to delete an empty inode */
+		if (!(*inode)) return 1;
+		/* after initial checks init the remove process */
 		avl_node_t *p = *inode;		
-		if (p->right) {
+		if (p->right) { 
 			if (p->left) {
 				STACK_PUSH(stack,inode);
 				unsigned int t = stack->top;
@@ -317,17 +323,20 @@ int avl_tree_remove(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 /**
  * @copydoc avl_iterator_init
  */
-void avl_iterator_init(avl_iterator_t *iterator, avl_tree_t *index, int direction) {	
-	iterator->index = index;
-	iterator->direction = direction;
-	iterator->stack.top = 0;
+void avl_iterator_init(avl_iterator_t *iterator, avl_tree_t *index, int direction) {
+	if (iterator && index) {	
+		iterator->index = index;
+		iterator->direction = direction;
+		iterator->stack.top = 0;
+	}
 }
 
 /**
  * @copydoc avl_iterator_have_data
  */
 inline int avl_iterator_have_data(avl_iterator_t *iterator) {
-	return iterator->stack.top;
+	if (iterator) return iterator->stack.top;
+	return 0;
 }
 
 /**
@@ -340,13 +349,15 @@ inline int avl_iterator_have_data(avl_iterator_t *iterator) {
  * immediately after yielding the minimum node.
  */
 void avl_iterator_move_first(avl_iterator_t *iterator) {
-	avl_stack_t *stack = &iterator->stack;
-	stack->top = 0;
-	avl_node_t **root = &(iterator->index->root);
-	traverse_left(stack, root);
-	if (!iterator->direction && stack->top) {
-		stack->nodeptr[0] = stack->nodeptr[stack->top-1];
-		stack->top = 1;
+	if (iterator) {
+		avl_stack_t *stack = &iterator->stack;
+		stack->top = 0;
+		avl_node_t **root = &(iterator->index->root);
+		traverse_left(stack, root);
+		if (!iterator->direction && stack->top) {
+			stack->nodeptr[0] = stack->nodeptr[stack->top-1];
+			stack->top = 1;
+		}
 	}
 }
 
@@ -360,13 +371,15 @@ void avl_iterator_move_first(avl_iterator_t *iterator) {
  * immediately after yielding the maximum node.
  */
 void avl_iterator_move_last(avl_iterator_t *iterator) {
-	avl_stack_t *stack = &iterator->stack;
-	stack->top = 0;
-	avl_node_t **root = &(iterator->index->root);
-	traverse_right(stack, root);
-	if (iterator->direction && stack->top) {
-		stack->nodeptr[0] = stack->nodeptr[stack->top-1];
-		stack->top = 1;
+	if (iterator) {
+		avl_stack_t *stack = &iterator->stack;
+		stack->top = 0;
+		avl_node_t **root = &(iterator->index->root);
+		traverse_right(stack, root);
+		if (iterator->direction && stack->top) {
+			stack->nodeptr[0] = stack->nodeptr[stack->top-1];
+			stack->top = 1;
+		}
 	}
 }
 
@@ -376,44 +389,48 @@ void avl_iterator_move_last(avl_iterator_t *iterator) {
  * @details
  * Searches for an exact key match matching `node`. Only ancestor turns
  * relevant to the configured `direction` are pushed onto the stack so that
- * `avl_iterator_get()` yields `node` first and continues in-order from that
+ *   `avl_iterator_get()` yields `node` first and continues in-order from that
  * position. If no exact match exists, the iterator stack is cleared
  * (`avl_iterator_have_data()` returns `0`).
  */
 void avl_iterator_move(avl_iterator_t *iterator, avl_node_t *node) {
-	avl_stack_t *stack = &iterator->stack;
-	stack->top = 0;			
-	avl_tree_t *index = iterator->index;
-	avl_node_t **inode = &index->root;
-	while (*inode) {
-		int dif = index->compare(*inode, node);
-		if (dif > 0) {
-			if (iterator->direction) STACK_PUSH(stack, inode); 
-			inode = &(*inode)->left;
-		} else if (dif < 0) {
-			if (!iterator->direction) STACK_PUSH(stack, inode);
-			inode = &(*inode)->right;
-		} else {
-			/* found */
-			STACK_PUSH(stack, inode); 		
-			return;
+	if (iterator && iterator->index && iterator->index->compare && node) {
+		avl_stack_t *stack = &iterator->stack;
+		stack->top = 0;			
+		avl_tree_t *index = iterator->index;
+		avl_node_t **inode = &index->root;
+		while (*inode) {
+			int dif = index->compare(*inode, node);
+			if (dif > 0) {
+				if (iterator->direction) STACK_PUSH(stack, inode); 
+				inode = &(*inode)->left;
+			} else if (dif < 0) {
+				if (!iterator->direction) STACK_PUSH(stack, inode);
+				inode = &(*inode)->right;
+			} else {
+				/* found */
+				STACK_PUSH(stack, inode); 		
+				return;
+			}
 		}
+		stack->top = 0;
 	}
-	stack->top = 0;
 }
 
 /**
  * @copydoc avl_iterator_get
  */
 avl_node_t *avl_iterator_get(avl_iterator_t *iterator) {
-	avl_stack_t *stack = &iterator->stack;
-	if (stack->top) { 
-		avl_node_t **current = stack->nodeptr[--stack->top];
-		if (iterator->direction)
-			traverse_left(stack, &(*current)->right);
-		else
-			traverse_right(stack, &(*current)->left);
-		return *current;
+	if (iterator) {
+		avl_stack_t *stack = &iterator->stack;
+		if (stack->top) { 
+			avl_node_t **current = stack->nodeptr[--stack->top];
+			if (iterator->direction)
+				traverse_left(stack, &(*current)->right);
+			else
+				traverse_right(stack, &(*current)->left);
+			return *current;
+		}
 	}
 	return NULL;
 }
