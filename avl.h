@@ -181,16 +181,29 @@ int avl_node_get_balance(avl_node_t *node);
 /**
  * @brief Searches for a matching node in the tree.
  *
- * Optionally records the search path inside `stack` so that a subsequent
+ * Records the search path inside `stack` so that a subsequent
  * call to `avl_tree_insert()` or `avl_tree_remove()` can reuse the traversal
  * without searching from the root again.
  *
  * @param tree  Pointer to the target `avl_tree_t`.
  * @param key   Dummy or template `avl_node_t` containing the key to search for.
- * @param stack Optional pointer to an `avl_stack_t` to store the path, or `NULL`.
+ * @param stack Pointer to an `avl_stack_t` to store the path.
  * @return Pointer to the matching `avl_node_t` if found, or `NULL` otherwise.
  */
 avl_node_t *avl_tree_search(avl_tree_t *tree, avl_node_t *key, avl_stack_t *stack);
+
+/**
+  * @brief Performs a fast, read-only lookup for a matching node in the tree.
+  * 
+  * Unlike `avl_tree_search()`, this function does not require or populate an
+  * `avl_stack_t` and avoids double-pointer indirections, making it ideal for
+  * pure queries where no subsequent insertion or removal will be performed.
+  * 
+  * @param tree Pointer to the target `avl_tree_t`.
+  * @param key  Dummy or template `avl_node_t` containing the key to search for.
+  * @return Pointer to the matching `avl_node_t` if found, or `NULL` otherwise.
+  */
+avl_node_t *avl_tree_find(avl_tree_t *tree, avl_node_t *key); 
 
 /**
  * @brief Inserts a new node into the tree and rebalances it.
@@ -204,7 +217,7 @@ avl_node_t *avl_tree_search(avl_tree_t *tree, avl_node_t *key, avl_stack_t *stac
  * @param stack Optional pre-populated path from `avl_tree_search()`, or `NULL`.
  * @return `0` on success, or non-zero if a duplicate node exists or an error occurs.
  */
-int avl_tree_insert(avl_tree_t *tree, avl_node_t *node, avl_stack_t *stack);
+ int avl_tree_insert(avl_tree_t *tree, avl_node_t *node, avl_stack_t *stack);
 
 /**
  * @brief Removes an existing node from the tree and rebalances it.

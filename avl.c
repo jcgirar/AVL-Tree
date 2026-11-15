@@ -143,14 +143,14 @@ static inline avl_node_t *balance_node(avl_node_t *node) {
 /**
  * @copydoc avl_tree_search
  */
-avl_node_t *avl_tree_search(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
-	if (index && index->compare && node && stack) {
+avl_node_t *avl_tree_search(avl_tree_t *index, avl_node_t *key, avl_stack_t *stack) {
+	if (index && index->compare && key && stack) {
 		avl_node_t **inode = &index->root;
 		stack->top = 0;
 		STACK_PUSH(stack, inode);	
 		/* search the tree stacking the intermediate nodes */
 		while (*inode) {
-			int dif = index->compare(*inode, node);
+			int dif = index->compare(*inode, key);
 			if (dif > 0) 
 				inode = &(*inode)->left;
 			else if (dif < 0) 
@@ -162,6 +162,26 @@ avl_node_t *avl_tree_search(avl_tree_t *index, avl_node_t *node, avl_stack_t *st
 	}
 	return NULL;
 }
+
+/**
+ * @copydoc avl_tree_find
+ */
+avl_node_t *avl_tree_find(avl_tree_t *index, avl_node_t *key) {
+	if (index && index->compare && key) {
+		avl_node_t *current = index->root;
+		while (current) {
+			int dif = index->compare(current, key);
+			if (dif > 0) 
+				current = current->left;
+			else if (dif < 0) 
+				current = current->right;
+			else   
+				return current;
+		}
+	}
+	return NULL;
+}
+
 
 /**
  * @copydoc avl_tree_insert
@@ -196,9 +216,11 @@ int avl_tree_insert(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 			if ((*parentptr)->balance == 0) break;
 			inode = parentptr;
 		}
+		/* return NOERROR */
+		return 0;
 	}
-	/* return NOERROR */ 
-	return 0; 
+	/* return ERROR */ 
+	return 1; 
 }
 
 /**
@@ -349,7 +371,7 @@ inline int avl_iterator_have_data(avl_iterator_t *iterator) {
  * immediately after yielding the minimum node.
  */
 void avl_iterator_move_first(avl_iterator_t *iterator) {
-	if (iterator) {
+	if (iterator && iterator->index) {
 		avl_stack_t *stack = &iterator->stack;
 		stack->top = 0;
 		avl_node_t **root = &(iterator->index->root);
@@ -371,7 +393,7 @@ void avl_iterator_move_first(avl_iterator_t *iterator) {
  * immediately after yielding the maximum node.
  */
 void avl_iterator_move_last(avl_iterator_t *iterator) {
-	if (iterator) {
+	if (iterator && iterator->index) {
 		avl_stack_t *stack = &iterator->stack;
 		stack->top = 0;
 		avl_node_t **root = &(iterator->index->root);
@@ -424,7 +446,7 @@ avl_node_t *avl_iterator_get(avl_iterator_t *iterator) {
 	if (iterator) {
 		avl_stack_t *stack = &iterator->stack;
 		if (stack->top) { 
-			avl_node_t **current = stack->nodeptr[--stack->top];
+			avl_node_t **current = STACK_POP(stack);
 			if (iterator->direction)
 				traverse_left(stack, &(*current)->right);
 			else
