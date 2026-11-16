@@ -146,8 +146,8 @@ static inline avl_node_t *balance_node(avl_node_t *node) {
 avl_node_t *avl_tree_search(avl_tree_t *tree, avl_node_t *key, avl_stack_t *stack) {
 	if (tree && tree->compare && key && stack) {
 		avl_node_t **inode = &tree->root;
-		stack->top = 0;
-		STACK_PUSH(stack, inode);	
+		stack->top = 1
+		stack->nodeptr[0] = inode;
 		/* search the tree stacking the intermediate nodes */
 		while (*inode) {
 			int dif = tree->compare(*inode, key);
@@ -187,14 +187,15 @@ avl_node_t *avl_tree_find(avl_tree_t *tree, avl_node_t *key) {
  * @copydoc avl_tree_insert
  */
 int avl_tree_insert(avl_tree_t *tree, avl_node_t *node, avl_stack_t *stack) {
-	if (tree && tree->compare && node) {
+	if (tree && node) {
 		avl_stack_t ts;
 		if (!stack) {
 			stack = &ts;
-			/* if node found return because no insert is possible */
-			if (avl_tree_search(tree, node, stack)) return 1;
-		} else if (!stack->top) return 1; /* if stack passed is empty no plaze to insert */ 
-		avl_node_t **inode = STACK_POP(stack);
+			stack->top = 0; /* init stack to avoid corrupted memory in local variable */
+			avl_tree_search(tree, node, stack); /* ignore function result because we will use stack */
+		}
+		if (!stack->top) return 1; /* if stack is empty return */
+	    avl_node_t **inode = STACK_POP(stack);
 		/* not possible to insert on an already occupied inode */
 		if (*inode) return 1; 
 		/* init node struct */
@@ -280,13 +281,14 @@ static inline void traverse_right(avl_stack_t *stack, avl_node_t **inode) {
  */
 
 int avl_tree_remove(avl_tree_t *tree, avl_node_t *node, avl_stack_t *stack) {
-	if (tree && tree->compare && node) {
+	if (tree && node) {
 		avl_stack_t ts;
 		if (!stack) {
 			stack = &ts;
-			/* if not node found return */
-			if (!avl_tree_search(tree, node, stack)) return 1;
-		} else if (!stack->top) return 1; /* if stack passed is empty return */
+			stack->top = 0; /* init stack to avoid corrupted memory in local variable */
+			avl_tree_search(tree, node, stack); /* ignore function result because we will use stack */
+		}
+		if (!stack->top) return 1; /* if stack is empty return */
 	    avl_node_t **inode = STACK_POP(stack);
 		/* not possible to delete an empty inode */
 		if (!(*inode)) return 1;
