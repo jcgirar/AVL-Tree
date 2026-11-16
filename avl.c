@@ -146,7 +146,7 @@ static inline avl_node_t *balance_node(avl_node_t *node) {
 avl_node_t *avl_tree_search(avl_tree_t *tree, avl_node_t *key, avl_stack_t *stack) {
 	if (tree && tree->compare && key && stack) {
 		avl_node_t **inode = &tree->root;
-		stack->top = 1
+		stack->top = 1;
 		stack->nodeptr[0] = inode;
 		/* search the tree stacking the intermediate nodes */
 		while (*inode) {
