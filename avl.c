@@ -143,14 +143,14 @@ static inline avl_node_t *balance_node(avl_node_t *node) {
 /**
  * @copydoc avl_tree_search
  */
-avl_node_t *avl_tree_search(avl_tree_t *index, avl_node_t *key, avl_stack_t *stack) {
-	if (index && index->compare && key && stack) {
-		avl_node_t **inode = &index->root;
+avl_node_t *avl_tree_search(avl_tree_t *tree, avl_node_t *key, avl_stack_t *stack) {
+	if (tree && tree->compare && key && stack) {
+		avl_node_t **inode = &tree->root;
 		stack->top = 0;
 		STACK_PUSH(stack, inode);	
 		/* search the tree stacking the intermediate nodes */
 		while (*inode) {
-			int dif = index->compare(*inode, key);
+			int dif = tree->compare(*inode, key);
 			if (dif > 0) 
 				inode = &(*inode)->left;
 			else if (dif < 0) 
@@ -166,11 +166,11 @@ avl_node_t *avl_tree_search(avl_tree_t *index, avl_node_t *key, avl_stack_t *sta
 /**
  * @copydoc avl_tree_find
  */
-avl_node_t *avl_tree_find(avl_tree_t *index, avl_node_t *key) {
-	if (index && index->compare && key) {
-		avl_node_t *current = index->root;
+avl_node_t *avl_tree_find(avl_tree_t *tree, avl_node_t *key) {
+	if (tree && tree->compare && key) {
+		avl_node_t *current = tree->root;
 		while (current) {
-			int dif = index->compare(current, key);
+			int dif = tree->compare(current, key);
 			if (dif > 0) 
 				current = current->left;
 			else if (dif < 0) 
@@ -186,13 +186,13 @@ avl_node_t *avl_tree_find(avl_tree_t *index, avl_node_t *key) {
 /**
  * @copydoc avl_tree_insert
  */
-int avl_tree_insert(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
-	if (index && node) {
+int avl_tree_insert(avl_tree_t *tree, avl_node_t *node, avl_stack_t *stack) {
+	if (tree && node) {
 		avl_stack_t ts;
 		if (!stack) {
 			stack = &ts;
 			/* if node found return because no insert is possible */
-			if (avl_tree_search(index, node, stack)) return 1;
+			if (avl_tree_search(tree, node, stack)) return 1;
 		} else if (!stack->top) return 1; /* if stack passed is empty no plaze to insert */ 
 		avl_node_t **inode = STACK_POP(stack);
 		/* not possible to insert on an already occupied inode */
@@ -279,13 +279,13 @@ static inline void traverse_right(avl_stack_t *stack, avl_node_t **inode) {
  * @endverbatim
  */
 
-int avl_tree_remove(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
-	if (index && node) {
+int avl_tree_remove(avl_tree_t *tree, avl_node_t *node, avl_stack_t *stack) {
+	if (tree && node) {
 		avl_stack_t ts;
 		if (!stack) {
 			stack = &ts;
 			/* if not node found return */
-			if (!avl_tree_search(index, node, stack)) return 1;
+			if (!avl_tree_search(tree, node, stack)) return 1;
 		} else if (!stack->top) return 1; /* if stack passed is empty return */
 	    avl_node_t **inode = STACK_POP(stack);
 		/* not possible to delete an empty inode */
@@ -345,9 +345,9 @@ int avl_tree_remove(avl_tree_t *index, avl_node_t *node, avl_stack_t *stack) {
 /**
  * @copydoc avl_iterator_init
  */
-void avl_iterator_init(avl_iterator_t *iterator, avl_tree_t *index, int direction) {
-	if (iterator && index) {	
-		iterator->index = index;
+void avl_iterator_init(avl_iterator_t *iterator, avl_tree_t *tree, int direction) {
+	if (iterator && tree) {	
+		iterator->index = tree;
 		iterator->direction = direction;
 		iterator->stack.top = 0;
 	}
@@ -409,20 +409,20 @@ void avl_iterator_move_last(avl_iterator_t *iterator) {
  * @copydoc avl_iterator_move
  *
  * @details
- * Records ancestors turns relevant to the configured `direction` while descending
+ * Records ancestor turns relevant to the configured `direction` while descending
  * the tree. On an exact match, the matching node is pushed onto the stack and
- * yielded first. If `key` is not present, the stack naturaly retains the
- * closest in-order succesor (`AVL_ITERATOR_RIGHT`) or predecessor
+ * yielded first. If `key` is not present, the stack naturally retains the
+ * closest in-order successor (`AVL_ITERATOR_RIGHT`) or predecessor
  * (`AVL_ITERATOR_LEFT`), or remains empty if `key` lies past the end of the tree.
  */
 void avl_iterator_move(avl_iterator_t *iterator, avl_node_t *key) {
 	if (iterator && iterator->index && iterator->index->compare && key) {
 		avl_stack_t *stack = &iterator->stack;
 		stack->top = 0;			
-		avl_tree_t *index = iterator->index;
-		avl_node_t **inode = &index->root;
+		avl_tree_t *tree = iterator->index;
+		avl_node_t **inode = &tree->root;
 		while (*inode) {
-			int dif = index->compare(*inode, key);
+			int dif = tree->compare(*inode, key);
 			if (dif > 0) {
 				if (iterator->direction) STACK_PUSH(stack, inode); 
 				inode = &(*inode)->left;

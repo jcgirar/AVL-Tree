@@ -247,24 +247,24 @@ void avl_iterator_init(avl_iterator_t *iterator, avl_tree_t *tree, int direction
 int avl_iterator_have_data(avl_iterator_t *iterator);
 
 /**
- * @brief Positions the iterator at the first node according to its direction.
+ * @brief Positions the iterator at the first (minimun key) node in the tree.
  *
- * @param iter Pointer to an `avl_iterator_t`.
+ * @param iterator Pointer to an `avl_iterator_t`.
  */
 void avl_iterator_move_first(avl_iterator_t *iterator);
 
 /**
- * @brief Positions the iterator at the last node according to its direction.
+ * @brief Positions the iterator at the last (maximun key) node in the tree.
  *
- * @param iter Pointer to an `avl_iterator_t`.
+ * @param iterator Pointer to an `avl_iterator_t`.
  */
 void avl_iterator_move_last(avl_iterator_t *iterator);
 
 /**
  * @brief Seeks to `key` or the nearest successor/predecessor in the configured direction.
  * 
- * If an exact match for `key` exist, `avl_iterator_get()` yields it first.
- * Otherwise, the iterator positions itself at the next grater node when
+ * If an exact match for `key` exists, `avl_iterator_get()` yields it first.
+ * Otherwise, the iterator positions itself at the next greater node when
  * `direction` is `AVL_ITERATOR_RIGHT` (lower bound), or the next smaller node
  * when `direction` is `AVL_ITERATOR_LEFT` (upper bound).
  *
