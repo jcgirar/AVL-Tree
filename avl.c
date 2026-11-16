@@ -409,20 +409,20 @@ void avl_iterator_move_last(avl_iterator_t *iterator) {
  * @copydoc avl_iterator_move
  *
  * @details
- * Searches for an exact key match matching `node`. Only ancestor turns
- * relevant to the configured `direction` are pushed onto the stack so that
- *   `avl_iterator_get()` yields `node` first and continues in-order from that
- * position. If no exact match exists, the iterator stack is cleared
- * (`avl_iterator_have_data()` returns `0`).
+ * Records ancestors turns relevant to the configured `direction` while descending
+ * the tree. On an exact match, the matching node is pushed onto the stack and
+ * yielded first. If `key` is not present, the stack naturaly retains the
+ * closest in-order succesor (`AVL_ITERATOR_RIGHT`) or predecessor
+ * (`AVL_ITERATOR_LEFT`), or remains empty if `key` lies past the end of the tree.
  */
-void avl_iterator_move(avl_iterator_t *iterator, avl_node_t *node) {
-	if (iterator && iterator->index && iterator->index->compare && node) {
+void avl_iterator_move(avl_iterator_t *iterator, avl_node_t *key) {
+	if (iterator && iterator->index && iterator->index->compare && key) {
 		avl_stack_t *stack = &iterator->stack;
 		stack->top = 0;			
 		avl_tree_t *index = iterator->index;
 		avl_node_t **inode = &index->root;
 		while (*inode) {
-			int dif = index->compare(*inode, node);
+			int dif = index->compare(*inode, key);
 			if (dif > 0) {
 				if (iterator->direction) STACK_PUSH(stack, inode); 
 				inode = &(*inode)->left;
@@ -435,7 +435,6 @@ void avl_iterator_move(avl_iterator_t *iterator, avl_node_t *node) {
 				return;
 			}
 		}
-		stack->top = 0;
 	}
 }
 

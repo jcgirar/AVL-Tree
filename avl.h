@@ -78,7 +78,7 @@ typedef struct avl_node avl_node_t;
 struct avl_node {
     avl_node_t *left;   /**< Pointer to the left child node. */
     avl_node_t *right;  /**< Pointer to the right child node. */
-    int balance;        /**< Balance factor of the node (`height(right) - height(left)` or vice versa). */
+    int balance;        /**< Balance factor of the node (`height(right) - height(left)`). */
 };
 
 /**
@@ -232,49 +232,54 @@ int avl_tree_remove(avl_tree_t *tree, avl_node_t *node, avl_stack_t *stack);
 /**
  * @brief Initializes an `avl_iterator_t` for a given tree and direction.
  *
- * @param iter      Pointer to the iterator to initialize.
+ * @param iterator  Pointer to the iterator to initialize.
  * @param tree      Pointer to the `avl_tree_t` to traverse.
  * @param direction Traversal direction (`AVL_ITERATOR_RIGHT` or `AVL_ITERATOR_LEFT`).
  */
-void avl_iterator_init(avl_iterator_t *iter, avl_tree_t *tree, int direction);
+void avl_iterator_init(avl_iterator_t *iterator, avl_tree_t *tree, int direction);
 
 /**
  * @brief Checks whether the iterator still has elements left to visit.
  *
- * @param iter Pointer to an active `avl_iterator_t`.
+ * @param iterator Pointer to an active `avl_iterator_t`.
  * @return Non-zero if more nodes are available, `0` when traversal is finished.
  */
-int avl_iterator_have_data(avl_iterator_t *iter);
+int avl_iterator_have_data(avl_iterator_t *iterator);
 
 /**
  * @brief Positions the iterator at the first node according to its direction.
  *
  * @param iter Pointer to an `avl_iterator_t`.
  */
-void avl_iterator_move_first(avl_iterator_t *iter);
+void avl_iterator_move_first(avl_iterator_t *iterator);
 
 /**
  * @brief Positions the iterator at the last node according to its direction.
  *
  * @param iter Pointer to an `avl_iterator_t`.
  */
-void avl_iterator_move_last(avl_iterator_t *iter);
+void avl_iterator_move_last(avl_iterator_t *iterator);
 
 /**
- * @brief Positions the iterator at a specific node (or lower/upper bound) in the tree.
+ * @brief Seeks to `key` or the nearest successor/predecessor in the configured direction.
+ * 
+ * If an exact match for `key` exist, `avl_iterator_get()` yields it first.
+ * Otherwise, the iterator positions itself at the next grater node when
+ * `direction` is `AVL_ITERATOR_RIGHT` (lower bound), or the next smaller node
+ * when `direction` is `AVL_ITERATOR_LEFT` (upper bound).
  *
- * @param iter Pointer to an `avl_iterator_t`.
- * @param node Target `avl_node_t` key to seek to.
+ * @param iterator Pointer to an `avl_iterator_t`.
+ * @param key Target `avl_node_t` key to seek to.
  */
-void avl_iterator_move(avl_iterator_t *iter, avl_node_t *node);
+void avl_iterator_move(avl_iterator_t *iterator, avl_node_t *key);
 
 /**
  * @brief Returns the current node and advances the iterator to the next position.
  *
- * @param iter Pointer to an active `avl_iterator_t`.
+ * @param iterator Pointer to an active `avl_iterator_t`.
  * @return Pointer to the current `avl_node_t`, or `NULL` if no data remains.
  */
-avl_node_t *avl_iterator_get(avl_iterator_t *iter);
+avl_node_t *avl_iterator_get(avl_iterator_t *iterator);
 
 /** @} */
 
