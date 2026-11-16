@@ -187,7 +187,7 @@ avl_node_t *avl_tree_find(avl_tree_t *tree, avl_node_t *key) {
  * @copydoc avl_tree_insert
  */
 int avl_tree_insert(avl_tree_t *tree, avl_node_t *node, avl_stack_t *stack) {
-	if (tree && node) {
+	if (tree && tree->compare && node) {
 		avl_stack_t ts;
 		if (!stack) {
 			stack = &ts;
@@ -280,7 +280,7 @@ static inline void traverse_right(avl_stack_t *stack, avl_node_t **inode) {
  */
 
 int avl_tree_remove(avl_tree_t *tree, avl_node_t *node, avl_stack_t *stack) {
-	if (tree && node) {
+	if (tree && tree->compare && node) {
 		avl_stack_t ts;
 		if (!stack) {
 			stack = &ts;
