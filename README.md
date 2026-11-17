@@ -162,8 +162,8 @@ This library was designed around strict memory-footprint and predictability cons
 
 If you are evaluating intrusive, zero-allocation AVL tree implementations in C, you may also want to explore these excellent projects that explore different trade-offs in the same design space:
 
-* **[ebiggers/avl_tree](https://github.com):** A widely used intrusive, non-recursive AVL implementation that packs the `parent` pointer and balance factor into a single word per node, enabling parent-pointer traversal without external stack state.
-* **[psqli/avl_tree](https://github.com):** A non-recursive, parentless intrusive AVL tree implementation that similarly uses an explicit traversal history stack to avoid storing parent pointers inside nodes.
+* **[ebiggers/avl_tree](https://github.com/ebiggers/avl_tree):** A widely used intrusive, non-recursive AVL implementation that packs the `parent` pointer and balance factor into a single word per node, enabling parent-pointer traversal without external stack state.
+* **[psqli/avl_tree](https://github.com/psqli/avl_tree):** A non-recursive, parentless intrusive AVL tree implementation that similarly uses an explicit traversal history stack to avoid storing parent pointers inside nodes.
  
 ## License
 
