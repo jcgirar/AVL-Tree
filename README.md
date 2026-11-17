@@ -10,7 +10,7 @@ Unlike conventional implementations that wrap user payloads behind `void *` poin
 * **Intrusive Design (`avl_container_of` / `avl_container_in`):** Nodes live inside your user structs, avoiding extra pointer indirections and separate node allocations.
 * **Zero Dynamic Memory Allocation:** The library never calls `malloc()` or `free()`. You retain 100% control over where your data lives (stack, static arrays, arenas, or memory pools), making it ideal for embedded and real-time systems.
 * **Multi-Index Support:** Embed multiple `avl_node_t` fields inside a single `struct` to keep records simultaneously indexed by different keys (e.g., ID, full name, and age).
-* **Non-Recursive & Stack-Driven (`avl_stack_t`):** Traversal, insertion, rebalancing, and deletion use explicit fixed-depth pointer-to-pointer stacks (`AVL_STACK_SIZE` defaults to `32` on 32-bit and `64` on 64-bit systems, or custom via `-DAVL_STACK_SIZE, supporting trees with millions of nodes without recursion).
+* **Non-Recursive & Stack-Driven (`avl_stack_t`):** Traversal, insertion, rebalancing, and deletion use explicit fixed-depth pointer-to-pointer stacks (`AVL_STACK_SIZE`) defaults to `32` on 32-bit and `64` on 64-bit systems, or custom via `-DAVL_STACK_SIZE, supporting trees with millions of nodes without recursion).
 * **Reusable Search Path:** `avl_tree_search()` can record the traversal path into an `avl_stack_t` and pass it directly to `avl_tree_insert()`, avoiding a second tree traversal when checking for duplicate keys.
 * **O(1) Table-Driven Rebalancing:** Post-rotation balance factors are resolved via a precomputed lookup table (`balances[5][5][2]`) instead of height recalculations.
 * **Bidirectional Iterators (`avl_iterator_t`):** Step through trees in ascending (`AVL_ITERATOR_RIGHT`) or descending (`AVL_ITERATOR_LEFT`) order, or seek directly to a specific key.
@@ -129,7 +129,8 @@ void print_tree(avl_tree_t *tree, size_t node_offset) {
 
 | Function | Description | Time Complexity |
 | :--- | :--- | :--- |
-| `avl_tree_search(tree, key, stack)` | Searches for `key` and optionally records the traversal path in `stack`. | $O(\log n)$ |
+| `avl_tree_find(tree, key)` | Fast read-only lookup without requiring a stack. | $O(\log n)$ |
+| `avl_tree_search(tree, key, stack)` | Searches for `key` and records the traversal path in `stack`. | $O(\log n)$ |
 | `avl_tree_insert(tree, node, stack)` | Inserts `node` and rebalances the tree (reuses `stack` if provided). Returns `0` on success. | $O(\log n)$ |
 | `avl_tree_remove(tree, node, stack)` | Removes `node` and rebalances the tree. Returns `0` on success, `1` if not found. | $O(\log n)$ |
 | `avl_node_get_height(node)` | Recursively computes subtree height (debugging/verification helper). | $O(n)$ |
@@ -142,7 +143,7 @@ void print_tree(avl_tree_t *tree, size_t node_offset) {
 | `avl_iterator_init(iter, tree, dir)` | Initializes an iterator for `tree` (`AVL_ITERATOR_RIGHT` = ascending, `AVL_ITERATOR_LEFT` = descending). |
 | `avl_iterator_move_first(iter)` | Moves the iterator to the minimum node in the tree. |
 | `avl_iterator_move_last(iter)` | Moves the iterator to the maximum node in the tree. |
-| `avl_iterator_move(iter, key)` | Seeks an exact match for `key` and prepares in-order traversal from that node. |
+| `avl_iterator_move(iter, key)` | Seeks to key or nearest successor/predecessor (lower/upper bound). |
 | `avl_iterator_have_data(iter)` | Returns non-zero while unvisited nodes remain in the iterator stack. |
 | `avl_iterator_get(iter)` | Returns the current `avl_node_t *` and advances to the next node. |
 

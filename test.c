@@ -234,9 +234,28 @@ static void test_iterator_bounds(void) {
 	assert(avl_iterator_get(&iter) == NULL);
 }
 
+static void test_remove_with_stack(void) {
+	avl_tree_t tree = avl_tree_init(item_compare);
+	struct item items[10];
+	for (int i = 0; i < 10; i++) {
+		items[i].key = i;
+		assert(avl_tree_insert(&tree, &items[i].node, NULL) == 0);
+	}
+	avl_stack_t stack;
+	struct item target = {.key=5};
+	avl_node_t *found = avl_tree_search(&tree, &target.node, &stack);
+	assert(found==&items[5].node);
+	
+	tree.compare = NULL;
+	assert(avl_tree_remove(&tree, found, &stack) == 0);
+	tree.compare = item_compare;
+	verify_avl_invariants(&tree, tree.root);
+}
+
 int main(void) {
 	test_insert_and_iterators();
 	test_removals();
+	test_remove_with_stack();
 	test_find_and_null_safety();
 	test_iterator_bounds();
 	printf("All AVL tests passed successfully!\n");
